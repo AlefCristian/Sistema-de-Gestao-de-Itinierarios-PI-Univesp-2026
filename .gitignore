@@ -1,0 +1,52 @@
+# ==========================================
+# GERAL / SISTEMA OPERACIONAL / IDEs
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.tmp
+
+# ==========================================
+# FRONTEND (React / Vite / Node)
+# ==========================================
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+
+# ==========================================
+# BACKEND (Node.js / PHP / Python / Docker)
+# ==========================================
+backend/node_modules/
+backend/vendor/
+backend/dist/
+backend/build/
+backend/.env
+backend/.env.local
+
+# Banco de dados local / Downloads / Imagens de Uploads
+backend/*.sqlite
+backend/*.sqlite-journal
+backend/*.db
+backend/uploads/
+backend/storage/logs/
+
+# Arquivos de Python (caso use no backend)
+backend/__pycache__/
+backend/*.pyc
+backend/.venv/
+backend/venv/
+
+# ==========================================
+# LOGS E OUTROS
+# ==========================================
+*.log
+logs/
