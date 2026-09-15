@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Layout } from './components/Layout';
 import { Produtos } from './components/Produtos';
 import { Vendas } from './components/Vendas';
+import { Clientes } from './components/Clientes';
 
 function App() {
   const [activeTab, setActiveTab] = useState('produtos');
@@ -10,7 +11,7 @@ function App() {
     <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
       {activeTab === 'produtos' && <Produtos />}
       {activeTab === 'vendas' && <Vendas />}
-      {activeTab === 'clientes' && <div>Em breve: Gestão de Clientes</div>}
+      {activeTab === 'clientes' && <Clientes />}
     </Layout>
   );
 }
