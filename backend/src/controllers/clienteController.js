@@ -1,103 +1,69 @@
 const db = require('../config/database');
 
-// 1. Listar todos os clientes
-exports.listarClientes = (req, res) => {
-  const sql = `SELECT * FROM clientes ORDER BY nome ASC`;
-
-  db.all(sql, [], (err, rows) => {
+// Listar todos os clientes
+exports.listar = (req, res) => {
+  db.all('SELECT * FROM clientes ORDER BY id DESC', [], (err, rows) => {
     if (err) {
-      return res.status(500).json({ erro: 'Erro ao buscar clientes.', detalhes: err.message });
+      return res.status(500).json({ erro: 'Erro ao listar clientes.' });
     }
     res.json(rows);
   });
 };
 
-// 2. Buscar cliente por ID
-exports.buscarClientePorId = (req, res) => {
-  const { id } = req.params;
-  const sql = `SELECT * FROM clientes WHERE id = ?`;
-
-  db.get(sql, [id], (err, row) => {
-    if (err) {
-      return res.status(500).json({ erro: 'Erro ao buscar cliente.', detalhes: err.message });
-    }
-    if (!row) {
-      return res.status(404).json({ erro: 'Cliente não encontrado.' });
-    }
-    res.json(row);
-  });
-};
-
-// 3. Cadastrar novo cliente
-exports.cadastrarCliente = (req, res) => {
-  const { nome, telefone, email, cpf } = req.body;
+// Cadastrar novo cliente
+exports.criar = (req, res) => {
+  const { nome, email, telefone, cpf } = req.body;
 
   if (!nome) {
     return res.status(400).json({ erro: 'O nome do cliente é obrigatório.' });
   }
 
-  const sql = `
-    INSERT INTO clientes (nome, telefone, email, cpf)
-    VALUES (?, ?, ?, ?)
-  `;
-
-  const params = [nome, telefone || null, email || null, cpf || null];
-
-  db.run(sql, params, function (err) {
+  const query = 'INSERT INTO clientes (nome, email, telefone, cpf) VALUES (?, ?, ?, ?)';
+  db.run(query, [nome, email, telefone, cpf], function (err) {
     if (err) {
-      if (err.message.includes('UNIQUE constraint failed')) {
-        return res.status(400).json({ erro: 'Já existe um cliente cadastrado com este CPF.' });
-      }
-      return res.status(500).json({ erro: 'Erro ao cadastrar cliente.', detalhes: err.message });
+      return res.status(500).json({ erro: 'Erro ao cadastrar cliente.' });
     }
-
-    res.status(201).json({
-      mensagem: 'Cliente cadastrado com sucesso!',
-      id: this.lastID
-    });
+    res.status(201).json({ id: this.lastID, nome, email, telefone, cpf });
   });
 };
 
-// 4. Atualizar dados do cliente
-exports.atualizarCliente = (req, res) => {
+// Atualizar cliente existente
+exports.atualizar = (req, res) => {
   const { id } = req.params;
-  const { nome, telefone, email, cpf } = req.body;
+  const { nome, email, telefone, cpf } = req.body;
 
-  const sql = `
-    UPDATE clientes
-    SET nome = ?, telefone = ?, email = ?, cpf = ?
+  if (!nome) {
+    return res.status(400).json({ erro: 'O nome do cliente é obrigatório.' });
+  }
+
+  const query = `
+    UPDATE clientes 
+    SET nome = ?, email = ?, telefone = ?, cpf = ?
     WHERE id = ?
   `;
 
-  const params = [nome, telefone, email, cpf, id];
-
-  db.run(sql, params, function (err) {
+  db.run(query, [nome, email, telefone, cpf, id], function (err) {
     if (err) {
-      return res.status(500).json({ erro: 'Erro ao atualizar cliente.', detalhes: err.message });
+      return res.status(500).json({ erro: 'Erro ao atualizar cliente.' });
     }
-
     if (this.changes === 0) {
       return res.status(404).json({ erro: 'Cliente não encontrado.' });
     }
-
     res.json({ mensagem: 'Cliente atualizado com sucesso!' });
   });
 };
 
-// 5. Deletar cliente
-exports.deletarCliente = (req, res) => {
+// Deletar cliente
+exports.deletar = (req, res) => {
   const { id } = req.params;
-  const sql = `DELETE FROM clientes WHERE id = ?`;
 
-  db.run(sql, [id], function (err) {
+  db.run('DELETE FROM clientes WHERE id = ?', [id], function (err) {
     if (err) {
-      return res.status(500).json({ erro: 'Erro ao deletar cliente.', detalhes: err.message });
+      return res.status(500).json({ erro: 'Erro ao excluir cliente.' });
     }
-
     if (this.changes === 0) {
       return res.status(404).json({ erro: 'Cliente não encontrado.' });
     }
-
-    res.json({ mensagem: 'Cliente removido com sucesso!' });
+    res.json({ mensagem: 'Cliente excluído com sucesso!' });
   });
 };
