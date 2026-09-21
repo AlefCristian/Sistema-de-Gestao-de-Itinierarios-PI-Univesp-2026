@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { Package, ShoppingBag, Users, Menu, X, Glasses } from 'lucide-react';
+import { Package, ShoppingBag, Users, Menu, X, Glasses, LayoutDashboard, History } from 'lucide-react';
+import { Dashboard } from './Dashboard';
 
 export function Layout({ children, activeTab, setActiveTab }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const menuItems = [
-    { id: 'produtos', label: 'Estoque / Produtos', icon: Package },
-    { id: 'vendas', label: 'PDV / Vendas', icon: ShoppingBag },
-    { id: 'clientes', label: 'Clientes', icon: Users },
-  ];
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'vendas', label: 'PDV / Vendas', icon: ShoppingBag },
+  { id: 'clientes', label: 'Clientes', icon: Users },
+  { id: 'produtos', label: 'Estoque / Produtos', icon: Package },
+  { id: 'historicoVendas', label: 'Histórico Vendas', icon: History },
+];
 
   return (
     <div style={{

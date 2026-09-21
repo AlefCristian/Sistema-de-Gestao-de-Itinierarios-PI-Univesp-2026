@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Plus, Search, Package, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Package, AlertTriangle, Pencil, Trash2 } from 'lucide-react';
 
 export function Produtos() {
   const [produtos, setProdutos] = useState([]);
   const [busca, setBusca] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+
   const [form, setForm] = useState({
     codigo_referencia: '',
     nome: '',
@@ -29,17 +31,55 @@ export function Produtos() {
     carregarProdutos();
   }, []);
 
+  // Abrir modal para novo produto
+  const handleOpenCreateModal = () => {
+    setEditingId(null);
+    setForm({
+      codigo_referencia: '',
+      nome: '',
+      tipo: 'sol',
+      marca: '',
+      preco_custo: '',
+      preco_venda: '',
+      quantidade_estoque: ''
+    });
+    setIsModalOpen(true);
+  };
+
+  // Abrir modal preenchido para edição
+  const handleOpenEditModal = (produto) => {
+    setEditingId(produto.id);
+    setForm({
+      codigo_referencia: produto.codigo_referencia || '',
+      nome: produto.nome || '',
+      tipo: produto.tipo || 'sol',
+      marca: produto.marca || '',
+      preco_custo: produto.preco_custo !== undefined ? produto.preco_custo : '',
+      preco_venda: produto.preco_venda !== undefined ? produto.preco_venda : '',
+      quantidade_estoque: produto.quantidade_estoque !== undefined ? produto.quantidade_estoque : ''
+    });
+    setIsModalOpen(true);
+  };
+
+  // Submeter formulário (Criação ou Edição)
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/produtos', {
+      const payload = {
         ...form,
         preco_custo: parseFloat(form.preco_custo),
         preco_venda: parseFloat(form.preco_venda),
         quantidade_estoque: parseInt(form.quantidade_estoque, 10)
-      });
+      };
 
-      alert('Produto cadastrado com sucesso!');
+      if (editingId) {
+        await api.put(`/produtos/${editingId}`, payload);
+        alert('Produto atualizado com sucesso!');
+      } else {
+        await api.post('/produtos', payload);
+        alert('Produto cadastrado com sucesso!');
+      }
+
       setForm({
         codigo_referencia: '',
         nome: '',
@@ -50,9 +90,23 @@ export function Produtos() {
         quantidade_estoque: ''
       });
       setIsModalOpen(false);
+      setEditingId(null);
       carregarProdutos();
     } catch (err) {
-      alert(err.response?.data?.erro || 'Erro ao cadastrar produto.');
+      alert(err.response?.data?.erro || 'Erro ao salvar produto.');
+    }
+  };
+
+  // Deletar produto
+  const handleDelete = async (id, nome) => {
+    if (window.confirm(`Tem certeza que deseja remover "${nome}" do estoque?`)) {
+      try {
+        await api.delete(`/produtos/${id}`);
+        alert('Produto removido com sucesso!');
+        carregarProdutos();
+      } catch (err) {
+        alert(err.response?.data?.erro || 'Erro ao deletar produto.');
+      }
     }
   };
 
@@ -98,7 +152,7 @@ export function Produtos() {
         </div>
 
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={handleOpenCreateModal}
           style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 18px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
         >
           <Plus size={18} />
@@ -117,12 +171,13 @@ export function Produtos() {
               <th style={{ padding: '14px 20px' }}>Marca</th>
               <th style={{ padding: '14px 20px' }}>Preço Venda</th>
               <th style={{ padding: '14px 20px' }}>Estoque</th>
+              <th style={{ padding: '14px 20px', textAlign: 'right' }}>Ações</th>
             </tr>
           </thead>
           <tbody>
             {produtosFiltrados.length === 0 ? (
               <tr>
-                <td colSpan="6" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
+                <td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: '#94a3b8' }}>
                   Nenhum produto encontrado.
                 </td>
               </tr>
@@ -146,6 +201,24 @@ export function Produtos() {
                       {p.quantidade_estoque} un
                     </span>
                   </td>
+                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                      <button
+                        onClick={() => handleOpenEditModal(p)}
+                        title="Editar produto"
+                        style={{ border: 'none', background: '#f1f5f9', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                      >
+                        <Pencil size={14} /> Editar
+                      </button>
+                      <button
+                        onClick={() => handleDelete(p.id, p.nome)}
+                        title="Excluir produto"
+                        style={{ border: 'none', background: '#fef2f2', color: '#ef4444', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                      >
+                        <Trash2 size={14} /> Excluir
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               ))
             )}
@@ -153,88 +226,91 @@ export function Produtos() {
         </table>
       </div>
 
-      {/* Modal Estilizado */}
-      {isModalOpen && (
-        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-          <div style={{ backgroundColor: '#fff', padding: '28px', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>Cadastrar Novo Óculos / Produto</h3>
+      {/* Modal Reutilizável de Cadastro / Edição */}
+      {/* Modal Reutilizável de Cadastro / Edição */}
+{isModalOpen && (
+  <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+    <div style={{ backgroundColor: '#fff', padding: '28px', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', boxSizing: 'border-box' }}>
+      <h3 style={{ margin: '0 0 20px 0', fontSize: '18px', fontWeight: '600' }}>
+        {editingId ? 'Editar Produto' : 'Cadastrar Novo Óculos / Produto'}
+      </h3>
 
-            <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px' }}>
-              <input 
-                placeholder="Código Ref. (ex: SOL-001)" 
-                value={form.codigo_referencia} 
-                onChange={e => setForm({...form, codigo_referencia: e.target.value})} 
-                required 
-                style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-              />
-              <input 
-                placeholder="Nome do Modelo" 
-                value={form.nome} 
-                onChange={e => setForm({...form, nome: e.target.value})} 
-                required 
-                style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-              />
-              <select 
-                value={form.tipo} 
-                onChange={e => setForm({...form, tipo: e.target.value})}
-                style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-              >
-                <option value="sol">Óculos de Sol</option>
-                <option value="receituario">Receituário</option>
-                <option value="acessorio">Acessório</option>
-              </select>
-              <input 
-                placeholder="Marca" 
-                value={form.marca} 
-                onChange={e => setForm({...form, marca: e.target.value})} 
-                style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-              />
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                <input 
-                  type="number" step="0.01" 
-                  placeholder="Custo (R$)" 
-                  value={form.preco_custo} 
-                  onChange={e => setForm({...form, preco_custo: e.target.value})} 
-                  required 
-                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-                />
-                <input 
-                  type="number" step="0.01" 
-                  placeholder="Venda (R$)" 
-                  value={form.preco_venda} 
-                  onChange={e => setForm({...form, preco_venda: e.target.value})} 
-                  required 
-                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-                />
-              </div>
-              <input 
-                type="number" 
-                placeholder="Quantidade em Estoque" 
-                value={form.quantidade_estoque} 
-                onChange={e => setForm({...form, quantidade_estoque: e.target.value})} 
-                required 
-                style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
-              />
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '12px', justifyContent: 'flex-end' }}>
-                <button 
-                  type="button" 
-                  onClick={() => setIsModalOpen(false)}
-                  style={{ padding: '10px 18px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
-                >
-                  Cancelar
-                </button>
-                <button 
-                  type="submit" 
-                  style={{ padding: '10px 18px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
-                >
-                  Salvar Produto
-                </button>
-              </div>
-            </form>
-          </div>
+      <form onSubmit={handleSubmit} style={{ display: 'grid', gap: '14px' }}>
+        <input 
+          placeholder="Código Ref. (ex: SOL-001)" 
+          value={form.codigo_referencia} 
+          onChange={e => setForm({...form, codigo_referencia: e.target.value})} 
+          required 
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+        />
+        <input 
+          placeholder="Nome do Modelo" 
+          value={form.nome} 
+          onChange={e => setForm({...form, nome: e.target.value})} 
+          required 
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+        />
+        <select 
+          value={form.tipo} 
+          onChange={e => setForm({...form, tipo: e.target.value})}
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+        >
+          <option value="sol">Óculos de Sol</option>
+          <option value="receituario">Receituário</option>
+          <option value="acessorio">Acessório</option>
+        </select>
+        <input 
+          placeholder="Marca" 
+          value={form.marca} 
+          onChange={e => setForm({...form, marca: e.target.value})} 
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+        />
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+          <input 
+            type="number" step="0.01" 
+            placeholder="Custo (R$)" 
+            value={form.preco_custo} 
+            onChange={e => setForm({...form, preco_custo: e.target.value})} 
+            required 
+            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+          />
+          <input 
+            type="number" step="0.01" 
+            placeholder="Venda (R$)" 
+            value={form.preco_venda} 
+            onChange={e => setForm({...form, preco_venda: e.target.value})} 
+            required 
+            style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+          />
         </div>
-      )}
+        <input 
+          type="number" 
+          placeholder="Quantidade em Estoque" 
+          value={form.quantidade_estoque} 
+          onChange={e => setForm({...form, quantidade_estoque: e.target.value})} 
+          required 
+          style={{ width: '100%', boxSizing: 'border-box', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px' }}
+        />
+
+        <div style={{ display: 'flex', gap: '12px', marginTop: '12px', justifyContent: 'flex-end' }}>
+          <button 
+            type="button" 
+            onClick={() => setIsModalOpen(false)}
+            style={{ padding: '10px 18px', backgroundColor: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            style={{ padding: '10px 18px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}
+          >
+            {editingId ? 'Atualizar Produto' : 'Salvar Produto'}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
     </div>
   );
 }
