@@ -2,12 +2,25 @@ const db = require('../config/database');
 
 // 1. Registrar uma nova venda com baixa automática no estoque
 exports.cadastrarVenda = (req, res) => {
-  const { cliente_id, canal_venda, forma_pagamento, itens } = req.body;
+  const { cliente_id, canal_venda, forma_pagamento, valor_desconto, itens } = req.body;
+
+  const desconto = parseFloat(valor_desconto) || 0;
+
+  // Normaliza o canal_venda para bater com o CHECK do SQLite: ('presencial_itinerante', 'online')
+  const canalValido = (canal_venda === 'online') ? 'online' : 'presencial_itinerante';
+
+  // Normaliza a forma_pagamento para bater com o CHECK do SQLite: ('pix', 'cartao', 'dinheiro')
+  let formaPagamentoValida = 'pix';
+  if (forma_pagamento === 'dinheiro') {
+    formaPagamentoValida = 'dinheiro';
+  } else if (forma_pagamento === 'cartao' || forma_pagamento === 'cartao_credito' || forma_pagamento === 'cartao_debito') {
+    formaPagamentoValida = 'cartao';
+  }
 
   // Validações de entrada
-  if (!canal_venda || !forma_pagamento || !itens || !Array.isArray(itens) || itens.length === 0) {
+  if (!itens || !Array.isArray(itens) || itens.length === 0) {
     return res.status(400).json({ 
-      erro: 'Informe o canal_venda, forma_pagamento e ao menos um item na lista de itens.' 
+      erro: 'Informe ao menos um item no carrinho de compras.' 
     });
   }
 
@@ -17,12 +30,11 @@ exports.cadastrarVenda = (req, res) => {
       return res.status(500).json({ erro: 'Erro ao iniciar transação.', detalhes: err.message });
     }
 
-    let valorTotalVenda = 0;
+    let valorTotalBruto = 0;
 
-    // Função auxiliar para calcular o total e verificar se há estoque suficiente de todos os itens
+    // 1. Verificar se há estoque suficiente para todos os itens
     const verificarEstoque = (index) => {
       if (index >= itens.length) {
-        // Todos os itens têm estoque suficiente! Prossegue inserindo a Venda no banco.
         return criarCabecalhoVenda();
       }
 
@@ -42,37 +54,37 @@ exports.cadastrarVenda = (req, res) => {
           });
         }
 
-        // Guarda o preço unitário atual e acumula no total da venda
-        item.preco_unitario = produto.preco_venda;
-        valorTotalVenda += produto.preco_venda * item.quantidade;
+        item.preco_unitario = item.preco_unitario !== undefined ? item.preco_unitario : produto.preco_venda;
+        valorTotalBruto += item.preco_unitario * item.quantidade;
 
-        // Passa para o próximo item
         verificarEstoque(index + 1);
       });
     };
 
-    // Cria o registro principal da Venda
+    // 2. Cria o registro principal da Venda
     const criarCabecalhoVenda = () => {
+      const valorTotalLiquido = Math.max(0, valorTotalBruto - desconto);
+
       const sqlVenda = `
         INSERT INTO vendas (cliente_id, canal_venda, valor_total, forma_pagamento)
         VALUES (?, ?, ?, ?)
       `;
 
-      db.run(sqlVenda, [cliente_id || null, canal_venda, valorTotalVenda, forma_pagamento], function (err) {
+      db.run(sqlVenda, [cliente_id || null, canalValido, valorTotalLiquido, formaPagamentoValida], function (err) {
         if (err) {
+          console.error('❌ Erro no SQL de Vendas:', err.message);
           db.run('ROLLBACK');
           return res.status(500).json({ erro: 'Erro ao registrar venda.', detalhes: err.message });
         }
 
         const vendaId = this.lastID;
-        processarItensVenda(vendaId, 0);
+        processarItensVenda(vendaId, 0, valorTotalLiquido);
       });
     };
 
-    // Insere os itens da venda e abata o estoque de cada produto
-    const processarItensVenda = (vendaId, index) => {
+    // 3. Insere os itens da venda e abata o estoque de cada produto
+    const processarItensVenda = (vendaId, index, valorTotalLiquido) => {
       if (index >= itens.length) {
-        // Todos os itens inseridos e estoques atualizados com sucesso! Finaliza a transação.
         db.run('COMMIT', (err) => {
           if (err) {
             db.run('ROLLBACK');
@@ -81,7 +93,7 @@ exports.cadastrarVenda = (req, res) => {
           return res.status(201).json({
             mensagem: 'Venda realizada com sucesso e estoque atualizado!',
             venda_id: vendaId,
-            valor_total: valorTotalVenda
+            valor_total: valorTotalLiquido
           });
         });
         return;
@@ -95,11 +107,11 @@ exports.cadastrarVenda = (req, res) => {
 
       db.run(sqlItem, [vendaId, item.produto_id, item.quantidade, item.preco_unitario], (err) => {
         if (err) {
+          console.error('❌ Erro no SQL de Itens da Venda:', err.message);
           db.run('ROLLBACK');
           return res.status(500).json({ erro: 'Erro ao registrar item da venda.', detalhes: err.message });
         }
 
-        // Abate a quantidade vendida no estoque do produto
         const sqlAbaterEstoque = `
           UPDATE produtos 
           SET quantidade_estoque = quantidade_estoque - ? 
@@ -108,22 +120,21 @@ exports.cadastrarVenda = (req, res) => {
 
         db.run(sqlAbaterEstoque, [item.quantidade, item.produto_id], (err) => {
           if (err) {
+            console.error('❌ Erro ao abater estoque:', err.message);
             db.run('ROLLBACK');
             return res.status(500).json({ erro: 'Erro ao abater estoque.', detalhes: err.message });
           }
 
-          // Avança para o próximo item
-          processarItensVenda(vendaId, index + 1);
+          processarItensVenda(vendaId, index + 1, valorTotalLiquido);
         });
       });
     };
 
-    // Inicia o processo de verificação a partir do primeiro item
     verificarEstoque(0);
   });
 };
 
-// 2. Listar histórico de vendas com detalhes do cliente
+// 2. Listar histórico de vendas
 exports.listarVendas = (req, res) => {
   const sql = `
     SELECT 
@@ -136,7 +147,7 @@ exports.listarVendas = (req, res) => {
       c.telefone AS cliente_telefone
     FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
-    ORDER BY v.data_venda DESC
+    ORDER BY v.id DESC
   `;
 
   db.all(sql, [], (err, rows) => {
@@ -147,7 +158,7 @@ exports.listarVendas = (req, res) => {
   });
 };
 
-// 3. Detalhes de uma venda específica com seus itens
+// 3. Detalhes de uma venda específica
 exports.buscarVendaPorId = (req, res) => {
   const { id } = req.params;
 
@@ -175,6 +186,80 @@ exports.buscarVendaPorId = (req, res) => {
         return res.status(500).json({ erro: 'Erro ao buscar itens da venda.', detalhes: err.message });
       }
       res.json({ ...venda, itens });
+    });
+  });
+};
+
+// 4. Excluir/Cancelar venda (Deleta a venda e estorna o estoque)
+exports.excluirVenda = (req, res) => {
+  const { id } = req.params;
+
+  db.run('BEGIN TRANSACTION', (err) => {
+    if (err) {
+      return res.status(500).json({ erro: 'Erro ao iniciar transação.', detalhes: err.message });
+    }
+
+    // 1. Buscar os itens da venda para saber quanto devolver pro estoque
+    const sqlBuscaItens = `SELECT produto_id, quantidade FROM itens_venda WHERE venda_id = ?`;
+
+    db.all(sqlBuscaItens, [id], (err, itens) => {
+      if (err) {
+        db.run('ROLLBACK');
+        return res.status(500).json({ erro: 'Erro ao buscar itens da venda.', detalhes: err.message });
+      }
+
+      if (!itens || itens.length === 0) {
+        db.run('ROLLBACK');
+        return res.status(404).json({ erro: 'Venda não encontrada ou sem itens.' });
+      }
+
+      // 2. Devolve o estoque de cada item (função recursiva)
+      const estornarEstoque = (index) => {
+        if (index >= itens.length) {
+          return apagarRegistroVenda();
+        }
+
+        const item = itens[index];
+        const sqlEstorna = `
+          UPDATE produtos 
+          SET quantidade_estoque = quantidade_estoque + ? 
+          WHERE id = ?
+        `;
+
+        db.run(sqlEstorna, [item.quantidade, item.produto_id], (err) => {
+          if (err) {
+            console.error('❌ Erro ao estornar estoque:', err.message);
+            db.run('ROLLBACK');
+            return res.status(500).json({ erro: 'Erro ao devolver produto ao estoque.', detalhes: err.message });
+          }
+          estornarEstoque(index + 1);
+        });
+      };
+
+      // 3. Deleta a venda do banco
+      const apagarRegistroVenda = () => {
+        const sqlDelete = `DELETE FROM vendas WHERE id = ?`;
+
+        db.run(sqlDelete, [id], function(err) {
+          if (err) {
+            console.error('❌ Erro ao apagar venda:', err.message);
+            db.run('ROLLBACK');
+            return res.status(500).json({ erro: 'Erro ao excluir venda.', detalhes: err.message });
+          }
+
+          // Finaliza e salva tudo!
+          db.run('COMMIT', (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ erro: 'Erro ao finalizar transação.', detalhes: err.message });
+            }
+            return res.json({ mensagem: 'Venda excluída e estoque devolvido com sucesso!' });
+          });
+        });
+      };
+
+      // Inicia o processo de devolução
+      estornarEstoque(0);
     });
   });
 };

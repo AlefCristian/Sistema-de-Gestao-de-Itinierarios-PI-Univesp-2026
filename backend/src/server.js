@@ -3,8 +3,9 @@ const express = require('express');
 const cors = require('cors');
 
 const produtoRoutes = require('./routes/produtoRoutes');
-const clienteRoutes = require('./routes/clienteRoutes.js');
+const clienteRoutes = require('./routes/clienteRoutes');
 const vendaRoutes = require('./routes/vendaRoutes');
+const dashboardRoutes = require('./routes/dashboardRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -16,6 +17,7 @@ app.use(express.json());
 app.use('/api/produtos', produtoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/vendas', vendaRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Rota de Health Check
 app.get('/api/health', (req, res) => {
