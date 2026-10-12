@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Plus, Search, Users, Mail, Phone, FileText, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Search, Users, Mail, Phone, FileText, Edit, Trash2 } from 'lucide-react';
 
 export function Clientes() {
   const [clientes, setClientes] = useState([]);
@@ -182,21 +182,21 @@ export function Clientes() {
                       {c.telefone || '-'}
                     </div>
                   </td>
-                  <td style={{ padding: '14px 20px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
                       <button
                         onClick={() => handleOpenEditModal(c)}
                         title="Editar cliente"
-                        style={{ border: 'none', background: '#f1f5f9', color: '#0f172a', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#f59e0b', display: 'flex', alignItems: 'center' }}
                       >
-                        <Pencil size={14} /> Editar
+                        <Edit size={18} />
                       </button>
                       <button
                         onClick={() => handleDelete(c.id, c.nome)}
                         title="Excluir cliente"
-                        style={{ border: 'none', background: '#fef2f2', color: '#ef4444', padding: '6px 10px', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '12px' }}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', display: 'flex', alignItems: 'center' }}
                       >
-                        <Trash2 size={14} /> Excluir
+                        <Trash2 size={18} />
                       </button>
                     </div>
                   </td>
