@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-// Adicionados Edit (ou Pencil) e Trash2
-import { Search, Eye, X, Calendar, CreditCard, User, Tag, ShoppingBag, Edit, Trash2 } from 'lucide-react';
+// Adicionados MapPin aos ícones
+import { Search, Eye, X, Calendar, CreditCard, User, Tag, ShoppingBag, Edit, Trash2, MapPin } from 'lucide-react';
 
 export function HistoricoVendas() {
   const [vendas, setVendas] = useState([]);
@@ -117,7 +117,7 @@ export function HistoricoVendas() {
               <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Pedido</th>
               <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Data</th>
               <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Cliente</th>
-              <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Canal</th>
+              <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Local / Canal</th>
               <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Pagamento</th>
               <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase' }}>Total</th>
               <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '600', color: '#64748b', textTransform: 'uppercase', textAlign: 'center' }}>Ações</th>
@@ -139,9 +139,10 @@ export function HistoricoVendas() {
                   <td style={{ padding: '16px 20px', fontSize: '13px', color: '#475569' }}>{formatarData(venda.data_venda)}</td>
                   <td style={{ padding: '16px 20px', fontSize: '14px', color: '#0f172a', fontWeight: '500' }}>{venda.cliente_nome || 'Consumidor (Não Identificado)'}</td>
                   <td style={{ padding: '16px 20px' }}>
-                    <span style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '12px', backgroundColor: venda.canal_venda === 'online' ? '#eff6ff' : '#f0fdf4', color: venda.canal_venda === 'online' ? '#2563eb' : '#16a34a', fontWeight: '600' }}>
-                      {venda.canal_venda === 'online' ? 'Online' : 'Presencial'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#0f172a', fontWeight: '500' }}>
+                      <MapPin size={14} color="#0284c7" />
+                      {venda.local_venda_nome || 'Loja Principal'}
+                    </div>
                   </td>
                   <td style={{ padding: '16px 20px', fontSize: '12px', color: '#64748b', textTransform: 'uppercase', fontWeight: '600' }}>
                     {venda.forma_pagamento.replace('_', ' ')}
@@ -195,10 +196,14 @@ export function HistoricoVendas() {
             </div>
 
             <div style={{ padding: '24px', overflowY: 'auto' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #f1f5f9' }}>
                 <div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}><User size={14} /> Cliente</div>
                   <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{vendaSelecionada.cliente_nome || 'Consumidor (Não Identificado)'}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={14} /> Local de Venda</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a' }}>{vendaSelecionada.local_venda_nome || 'Loja Principal'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}><CreditCard size={14} /> Pagamento</div>
