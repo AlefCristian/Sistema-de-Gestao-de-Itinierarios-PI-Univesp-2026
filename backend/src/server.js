@@ -6,6 +6,7 @@ const produtoRoutes = require('./routes/produtoRoutes');
 const clienteRoutes = require('./routes/clienteRoutes');
 const vendaRoutes = require('./routes/vendaRoutes');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const localVendaRoutes = require('./routes/localVendaRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.use('/api/produtos', produtoRoutes);
 app.use('/api/clientes', clienteRoutes);
 app.use('/api/vendas', vendaRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/locais-venda', localVendaRoutes);
 
 // Rota de Health Check
 app.get('/api/health', (req, res) => {
