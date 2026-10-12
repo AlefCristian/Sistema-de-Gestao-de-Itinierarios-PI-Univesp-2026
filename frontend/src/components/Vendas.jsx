@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import api from '../services/api';
-import { Search, Plus, Trash2, ShoppingBag, CheckCircle, User, CreditCard, X } from 'lucide-react';
+import { Search, Plus, Trash2, ShoppingBag, CheckCircle, User, MapPin, CreditCard, X } from 'lucide-react';
 
 export function Vendas() {
   const [produtos, setProdutos] = useState([]);
   const [clientes, setClientes] = useState([]);
+  const [locaisVenda, setLocaisVenda] = useState([]);
   const [busca, setBusca] = useState('');
   const [carrinho, setCarrinho] = useState([]);
   const [clienteId, setClienteId] = useState('');
+  const [localVendaId, setLocalVendaId] = useState('');
   const [formaPagamento, setFormaPagamento] = useState('pix');
   const [desconto, setDesconto] = useState(0);
   const [sucessoModal, setSucessoModal] = useState(false);
@@ -20,15 +22,20 @@ export function Vendas() {
     }).format(valor || 0);
   };
 
-  // Carrega lista de produtos e clientes
+  // Carrega lista de produtos, clientes e locais de venda
   const carregarDados = async () => {
     try {
-      const [resProdutos, resClientes] = await Promise.all([
+      const [resProdutos, resClientes, resLocais] = await Promise.all([
         api.get('/produtos'),
-        api.get('/clientes')
+        api.get('/clientes'),
+        api.get('/locais-venda')
       ]);
       setProdutos(resProdutos.data);
       setClientes(resClientes.data);
+      setLocaisVenda(resLocais.data);
+      if (resLocais.data.length > 0 && !localVendaId) {
+        setLocalVendaId(resLocais.data[0].id);
+      }
     } catch (err) {
       alert('Erro ao carregar dados do PDV.');
     }
@@ -112,6 +119,7 @@ export function Vendas() {
     try {
       await api.post('/vendas', {
         cliente_id: clienteId ? parseInt(clienteId, 10) : null,
+        local_venda_id: localVendaId ? parseInt(localVendaId, 10) : null,
         forma_pagamento: formaPagamento,
         valor_desconto: valorDesconto,
         itens: carrinho.map(item => ({
@@ -233,6 +241,23 @@ export function Vendas() {
               <option value="">Consumidor (Não Identificado)</option>
               {clientes.map(c => (
                 <option key={c.id} value={c.id}>{c.nome} {c.cpf ? `- ${c.cpf}` : ''}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Seleção de Local de Venda */}
+          <div style={{ marginBottom: '14px' }}>
+            <label style={{ fontSize: '12px', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+              <MapPin size={14} /> Local de Venda
+            </label>
+            <select
+              value={localVendaId}
+              onChange={e => setLocalVendaId(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', padding: '8px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+            >
+              <option value="">Selecione o local...</option>
+              {locaisVenda.map(l => (
+                <option key={l.id} value={l.id}>{l.nome}</option>
               ))}
             </select>
           </div>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, ShoppingBag, Users, Menu, X, Glasses, LayoutDashboard, History } from 'lucide-react';
+import { Package, ShoppingBag, Users, Menu, X, Glasses, LayoutDashboard, History, MapPin } from 'lucide-react';
 import { Dashboard } from './Dashboard';
 
 export function Layout({ children, activeTab, setActiveTab }) {
@@ -10,6 +10,7 @@ export function Layout({ children, activeTab, setActiveTab }) {
   { id: 'vendas', label: 'PDV / Vendas', icon: ShoppingBag },
   { id: 'clientes', label: 'Clientes', icon: Users },
   { id: 'produtos', label: 'Estoque / Produtos', icon: Package },
+  { id: 'locaisVenda', label: 'Locais de Venda', icon: MapPin },
   { id: 'historicoVendas', label: 'Histórico Vendas', icon: History },
 ];
 
