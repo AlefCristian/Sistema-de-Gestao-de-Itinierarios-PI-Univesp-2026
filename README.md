@@ -94,8 +94,8 @@ Antes de iniciar, você precisará ter instalado em sua máquina:
 
 ### 1. Clonar o Repositório
 ```bash
-git clone https://github.com/AlefCristian/Sistema-de-Gestao-e-Itinierarios-PI-Univesp-2026
-cd Sistema-de-Gestao-e-Itinierarios-PI-Univesp-2026
+git clone https://github.com/AlefCristian/Sistema-de-Gestao-de-Itinierarios-PI-Univesp-2026
+cd Sistema-de-Gestao-de-Itinierarios-PI-Univesp-2026
 ```
 
 ---
