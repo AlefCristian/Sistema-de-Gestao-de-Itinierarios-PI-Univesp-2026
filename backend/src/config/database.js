@@ -52,7 +52,7 @@ db.serialize(() => {
     );
   `);
 
-  // 4. Locais de Venda (Origens / Itinerários / Canais)
+  // 4. Locais de Venda / Canais (Cadastrados livremente pelo usuário)
   db.run(`
     CREATE TABLE IF NOT EXISTS locais_venda (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -62,17 +62,18 @@ db.serialize(() => {
     );
   `);
 
-  // 5. Vendas
+  // 5. Vendas (Sem a restrição do canal_venda)
   db.run(`
     CREATE TABLE IF NOT EXISTS vendas (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       cliente_id INTEGER,
+      usuario_id INTEGER,
       local_venda_id INTEGER,
-      canal_venda TEXT CHECK(canal_venda IN ('presencial_itinerante', 'online')) NOT NULL,
       valor_total REAL NOT NULL,
       forma_pagamento TEXT CHECK(forma_pagamento IN ('pix', 'cartao', 'dinheiro')) NOT NULL,
       data_venda DATETIME DEFAULT (DATETIME('now', 'localtime')),
       FOREIGN KEY (cliente_id) REFERENCES clientes(id) ON DELETE SET NULL,
+      FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL,
       FOREIGN KEY (local_venda_id) REFERENCES locais_venda(id) ON DELETE SET NULL
     );
   `);

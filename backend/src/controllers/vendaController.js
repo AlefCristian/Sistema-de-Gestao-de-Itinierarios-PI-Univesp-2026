@@ -2,12 +2,9 @@ const db = require('../config/database');
 
 // 1. Registrar uma nova venda com baixa automática no estoque
 exports.cadastrarVenda = (req, res) => {
-  const { cliente_id, canal_venda, forma_pagamento, valor_desconto, itens } = req.body;
+  const { cliente_id, usuario_id, local_venda_id, forma_pagamento, valor_desconto, itens } = req.body;
 
   const desconto = parseFloat(valor_desconto) || 0;
-
-  // Normaliza o canal_venda para bater com o CHECK do SQLite: ('presencial_itinerante', 'online')
-  const canalValido = (canal_venda === 'online') ? 'online' : 'presencial_itinerante';
 
   // Normaliza a forma_pagamento para bater com o CHECK do SQLite: ('pix', 'cartao', 'dinheiro')
   let formaPagamentoValida = 'pix';
@@ -66,20 +63,24 @@ exports.cadastrarVenda = (req, res) => {
       const valorTotalLiquido = Math.max(0, valorTotalBruto - desconto);
 
       const sqlVenda = `
-        INSERT INTO vendas (cliente_id, canal_venda, valor_total, forma_pagamento)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO vendas (cliente_id, usuario_id, local_venda_id, valor_total, forma_pagamento)
+        VALUES (?, ?, ?, ?, ?)
       `;
 
-      db.run(sqlVenda, [cliente_id || null, canalValido, valorTotalLiquido, formaPagamentoValida], function (err) {
-        if (err) {
-          console.error('❌ Erro no SQL de Vendas:', err.message);
-          db.run('ROLLBACK');
-          return res.status(500).json({ erro: 'Erro ao registrar venda.', detalhes: err.message });
-        }
+      db.run(
+        sqlVenda, 
+        [cliente_id || null, usuario_id || null, local_venda_id || null, valorTotalLiquido, formaPagamentoValida], 
+        function (err) {
+          if (err) {
+            console.error('❌ Erro no SQL de Vendas:', err.message);
+            db.run('ROLLBACK');
+            return res.status(500).json({ erro: 'Erro ao registrar venda.', detalhes: err.message });
+          }
 
-        const vendaId = this.lastID;
-        processarItensVenda(vendaId, 0, valorTotalLiquido);
-      });
+          const vendaId = this.lastID;
+          processarItensVenda(vendaId, 0, valorTotalLiquido);
+        }
+      );
     };
 
     // 3. Insere os itens da venda e abata o estoque de cada produto
@@ -139,14 +140,15 @@ exports.listarVendas = (req, res) => {
   const sql = `
     SELECT 
       v.id,
-      v.canal_venda,
       v.valor_total,
       v.forma_pagamento,
       v.data_venda,
       c.nome AS cliente_nome,
-      c.telefone AS cliente_telefone
+      c.telefone AS cliente_telefone,
+      lv.nome AS local_venda_nome
     FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
+    LEFT JOIN locais_venda lv ON v.local_venda_id = lv.id
     ORDER BY v.id DESC
   `;
 
@@ -163,9 +165,13 @@ exports.buscarVendaPorId = (req, res) => {
   const { id } = req.params;
 
   const sqlVenda = `
-    SELECT v.*, c.nome AS cliente_nome 
+    SELECT 
+      v.*, 
+      c.nome AS cliente_nome,
+      lv.nome AS local_venda_nome
     FROM vendas v
     LEFT JOIN clientes c ON v.cliente_id = c.id
+    LEFT JOIN locais_venda lv ON v.local_venda_id = lv.id
     WHERE v.id = ?
   `;
 
@@ -199,7 +205,6 @@ exports.excluirVenda = (req, res) => {
       return res.status(500).json({ erro: 'Erro ao iniciar transação.', detalhes: err.message });
     }
 
-    // 1. Buscar os itens da venda para saber quanto devolver pro estoque
     const sqlBuscaItens = `SELECT produto_id, quantidade FROM itens_venda WHERE venda_id = ?`;
 
     db.all(sqlBuscaItens, [id], (err, itens) => {
@@ -213,7 +218,6 @@ exports.excluirVenda = (req, res) => {
         return res.status(404).json({ erro: 'Venda não encontrada ou sem itens.' });
       }
 
-      // 2. Devolve o estoque de cada item (função recursiva)
       const estornarEstoque = (index) => {
         if (index >= itens.length) {
           return apagarRegistroVenda();
@@ -236,7 +240,6 @@ exports.excluirVenda = (req, res) => {
         });
       };
 
-      // 3. Deleta a venda do banco
       const apagarRegistroVenda = () => {
         const sqlDelete = `DELETE FROM vendas WHERE id = ?`;
 
@@ -247,7 +250,6 @@ exports.excluirVenda = (req, res) => {
             return res.status(500).json({ erro: 'Erro ao excluir venda.', detalhes: err.message });
           }
 
-          // Finaliza e salva tudo!
           db.run('COMMIT', (err) => {
             if (err) {
               db.run('ROLLBACK');
@@ -258,7 +260,6 @@ exports.excluirVenda = (req, res) => {
         });
       };
 
-      // Inicia o processo de devolução
       estornarEstoque(0);
     });
   });
